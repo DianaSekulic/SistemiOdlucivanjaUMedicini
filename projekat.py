@@ -215,3 +215,61 @@ plt.figure()
 sns.scatterplot(data = data_LDA2, x = 0 , y = 1, hue = 'Class/ASD Traits ') # hue boji parametre
 plt.plot(X,Y)
 plt.show()
+
+#%%
+# Neuralna mreza
+
+from sklearn.model_selection import train_test_split
+from keras.models import Sequential
+from keras.layers import Dense
+
+podaci = data.drop('Class/ASD Traits ', axis=1)
+klasa = data['Class/ASD Traits ']
+Xtrening, Xtest, Ytrening, Ytest = train_test_split(podaci, klasa, train_size=2/3, shuffle=True, random_state=42, stratify=klasa)
+
+# Pravljenje modela mreze
+def make_model():
+    model = Sequential()
+    model.add(Dense(10, input_dim=17, activation='relu'))
+    model.add(Dense(5, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    
+    return model
+
+from keras.wrappers.scikit_learn import KerasClassifier
+model = KerasClassifier(build_fn=make_model, verbose=True)
+
+batch_size = [1, 10, 20, 50]
+epochs = [10, 100, 200, 500]
+param_grid = dict(batch_size=batch_size, epochs=epochs)
+
+from sklearn.model_selection import GridSearchCV
+grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=3)
+grid_results = grid.fit(Xtrening, Ytrening)
+
+best_batch_size = grid_results.best_params_['batch_size']
+best_epoch = grid_results.best_params_['epochs']
+
+from keras.callbacks import EarlyStopping
+es = EarlyStopping(monitor='val_loss', patience=100, verbose=False)
+
+model = Sequential()
+model.add(Dense(10, input_dim=17, activation='relu'))
+model.add(Dense(5, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+history = model.fit(Xtrening, Ytrening, epochs=best_epoch, batch_size=best_batch_size, verbose=True, validation_data=(Xtest, Ytest), callbacks=[es])
+
+_, accTest = model.evaluate(Xtest, Ytest, verbose=False)
+_, accTrening = model.evaluate(Xtrening, Ytrening, verbose=False)
+
+plt.figure()
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+
+
+
